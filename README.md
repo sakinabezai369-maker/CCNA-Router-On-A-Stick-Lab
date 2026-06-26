@@ -197,6 +197,27 @@ Include screenshots showing:
 * ROAS is significantly more scalable than Traditional Inter-VLAN Routing.
 
 ---
+## 🏷️ Understanding Tagged vs. Untagged Traffic in this Lab
+
+To fully grasp how Inter-VLAN routing operates in this topology, we must differentiate between how Access ports and Trunk ports handle Ethernet frames:
+
+### 1. Untagged Frames (Access Ports & End Devices)
+* **What it means:** Standard end devices (like PC0, PC2, PC4) have no concept of VLANs. They send and receive standard, **Untagged** Ethernet frames.
+* **In this Lab:** * When **PC2** sends data, it leaves the PC interface as *Untagged*. 
+  * **Switch0** receives it on `Fa0/4` (Access VLAN 10), and internally understands that this frame belongs to the Sales department. 
+  * Before delivering data to any target PC on an access port, the switch strips away any internal tracking, ensuring the final PC receives a clean, *Untagged* frame.
+
+### 2. Tagged Frames (Trunk Port `Fa0/3`)
+* **What it means:** To multiplex multiple networks over the single physical link between **Switch0** and **Router0**, frames must be "labeled" so the receiving device knows which VLAN they belong to. This is called **802.1Q Tagging**.
+* **In this Lab:**
+  * When the switch forwards PC2's frame up to the router via the Trunk port `Fa0/3`, it injects a **4-byte 802.1Q Tag** containing **VLAN ID: 10** into the Ethernet header.
+  * **Router0** receives this **Tagged Frame** on its physical interface, reads the tag, and steers it directly to the virtual sub-interface `Gig0/0.10`.
+
+### 3. The Native VLAN Exception (VLAN 199)
+* **The Rule:** The Native VLAN is the *only* VLAN on a trunk link that sends and expects traffic **Untagged**.
+* **In this Lab:** * **PC4** and **PC5** are administrative devices assigned to **VLAN 199**.
+  * When their traffic travels across the trunk line `Fa0/3` toward the router, **Switch0 does NOT add an 802.1Q tag** because it matches the configured Native VLAN.
+  * **Router0** receives this *Untagged* frame on its physical port, recognizes it as Native traffic, and processes it through sub-interface `Gig0/0.30` (configured with `encapsulation dot1Q 199 native`).
 
 # ⚠️ Design Considerations
 
