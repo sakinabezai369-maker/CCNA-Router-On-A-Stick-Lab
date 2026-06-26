@@ -1,231 +1,194 @@
-# CCNA Router-on-a-Stick (ROAS) Inter-VLAN Routing Lab
+# Router-on-a-Stick (ROAS) Inter-VLAN Routing Lab
 
 ## 📌 Project Overview
-
-This repository contains a Cisco Packet Tracer laboratory demonstrating **Router-on-a-Stick (ROAS)** Inter-VLAN Routing.
-
-The lab shows how multiple VLANs can communicate through a **single physical router interface** using **IEEE 802.1Q trunking** and **router sub-interfaces**. It also demonstrates proper **Native VLAN (VLAN 199)** configuration and verification.
+This repository contains a Cisco Packet Tracer laboratory demonstrating **Router-on-a-Stick (ROAS)** Inter-VLAN Routing. The project showcases how to route traffic between multiple logically isolated networks (VLAN 10, VLAN 20, and Native VLAN 199) using a single physical router interface split into virtual sub-interfaces via 802.1Q encapsulation.
 
 ---
 
 ## 🎯 Learning Objectives
-
 By completing this lab, you will learn how to:
-
-* Configure VLANs on a Cisco switch.
-* Configure IEEE 802.1Q trunking.
-* Configure Router-on-a-Stick (ROAS).
-* Configure router sub-interfaces.
-* Configure a Native VLAN.
-* Verify Inter-VLAN Routing.
-* Troubleshoot common ROAS issues.
+* Configure VLANs on a Cisco Catalyst Switch.
+* Implement IEEE 802.1Q trunking parameters.
+* Set up Router-on-a-Stick (ROAS) using virtual sub-interfaces.
+* Handle strict Native VLAN coordination and remediation.
+* Troubleshoot and verify Layer 2/Layer 3 boundaries using Cisco IOS verification tools.
 
 ---
 
 ## 🏗️ Why Router-on-a-Stick?
+Router-on-a-Stick (ROAS) is a highly scalable alternative to Traditional Inter-VLAN Routing. 
 
-Router-on-a-Stick (ROAS) is a scalable alternative to Traditional Inter-VLAN Routing.
-
-Instead of requiring one physical router interface per VLAN, ROAS uses a **single trunk link** carrying traffic for multiple VLANs. The router separates this traffic using **802.1Q sub-interfaces**, significantly reducing hardware requirements.
+Instead of exhausting one physical router interface per VLAN (which leads to hardware wastage and high costs), ROAS multiplexes traffic from multiple broadcast domains over a **single physical trunk link**. The router separates and routes this traffic logically using 802.1Q virtual sub-interfaces.
 
 ---
 
 ## 🌐 Network Topology
+The actual network diagram implemented in this laboratory is shown below:
 
-![Network Topology](topology.PNG)
+![Network Topology](topology.png)
+
+### 📋 Network Addressing & Port Mapping Table:
+| Device Name | Interface / Sub-interface | IP Address | Subnet Mask | Default Gateway | VLAN Assignment | Connected Switch Port |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Router0** | Gig0/0 | Unassigned | N/A | N/A | Trunk Main Interface | Connected to Fa0/3 |
+| **Router0** | Gig0/0.10 | 192.168.100.1 | 255.255.255.0 | N/A | VLAN 10 (Sales) | Virtual Mapping |
+| **Router0** | Gig0/0.20 | 192.168.150.1 | 255.255.255.0 | N/A | VLAN 20 (HR) | Virtual Mapping |
+| **Router0** | Gig0/0.30 | 192.168.200.1 | 255.255.255.0 | N/A | VLAN 199 (Native) | Virtual Mapping |
+| **PC2** | FastEthernet0 | 192.168.100.10 | 255.255.255.0 | 192.168.100.1 | VLAN 10 (Sales) | **Fa0/4** |
+| **PC3** | FastEthernet0 | 192.168.100.11 | 255.255.255.0 | 192.168.100.1 | VLAN 10 (Sales) | **Fa0/5** |
+| **PC0** | FastEthernet0 | 192.168.150.10 | 255.255.255.0 | 192.168.150.1 | VLAN 20 (HR) | **Fa0/1** |
+| **PC1** | FastEthernet0 | 192.168.150.11 | 255.255.255.0 | 192.168.150.1 | VLAN 20 (HR) | **Fa0/2** |
+| **PC4** | FastEthernet0 | 192.168.200.10 | 255.255.255.0 | 192.168.200.1 | VLAN 199 (Native) | **Fa0/6** |
+| **PC5** | FastEthernet0 | 192.168.200.11 | 255.255.255.0 | 192.168.200.1 | VLAN 199 (Native) | **Fa0/7** |
 
 ---
 
-## 📋 Network Addressing
+## 🛠️ CLI Configurations
 
-| Device  | Interface | IP Address     | VLAN              |
-| ------- | --------- | -------------- | ----------------- |
-| Router0 | G0/0.10   | 192.168.100.1  | VLAN 10 (Sales)   |
-| Router0 | G0/0.20   | 192.168.150.1  | VLAN 20 (HR)      |
-| Router0 | G0/0.30   | 192.168.200.1  | VLAN 199 (Native) |
-| PC2     | Fa0       | 192.168.100.10 | VLAN 10           |
-| PC3     | Fa0       | 192.168.100.11 | VLAN 10           |
-| PC0     | Fa0       | 192.168.150.10 | VLAN 20           |
-| PC1     | Fa0       | 192.168.150.11 | VLAN 20           |
-| PC4     | Fa0       | 192.168.200.10 | VLAN 199          |
-| PC5     | Fa0       | 192.168.200.11 | VLAN 199          |
-
----
-
-# 🛠️ Switch Configuration
-
-### VLAN Creation
+### 1. Switch Configurations (Switch0)
+* Created and explicitly named departmental VLANs.
+* Configured local access ports for the data networks.
+* Secured administrative hosts on ports `Fa0/6-7` by mapping them as **Access Ports** directly into Native VLAN 199 to mitigate L2 vulnerabilities.
+* Configured uplink interface `Fa0/3` as an **802.1Q Trunk Port** explicitly referencing Native VLAN 199.
 
 ```ios
-vlan 10
- name Sales
+! VLAN Initialization
+Switch> enable
+Switch# configure terminal
+Switch(config)# vlan 10
+Switch(config-vlan)# name Sales
+Switch(config)# vlan 20
+Switch(config-vlan)# name HR
+Switch(config)# vlan 199
+Switch(config-vlan)# name Native
 
-vlan 20
- name HR
+! Access Mode Port Allocations
+Switch(config)# interface range fa0/4-5
+Switch(config-if-range)# switchport mode access
+Switch(config-if-range)# switchport access vlan 10
 
-vlan 199
- name Native
+Switch(config)# interface range fa0/1-2
+Switch(config-if-range)# switchport mode access
+Switch(config-if-range)# switchport access vlan 20
+
+Switch(config)# interface range fa0/6-7
+Switch(config-if-range)# switchport mode access
+Switch(config-if-range)# switchport access vlan 199
+
+! Router Link Trunk Infrastructure
+Switch(config)# interface fa0/3
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# switchport trunk native vlan 199
+Switch(config-if)# end
+Switch# write
+
 ```
 
-### Access Ports
+### 2. Router Configurations (Router0)
+
+* Brought up the primary physical interface context.
+* Spawned targeted sub-interfaces mapping back to Layer 2 802.1Q tags.
+* Configured sub-interface `.30` with the `native` statement to instruct the IP engine to handle inbound untagged streams as Native VLAN 199 data.
 
 ```ios
-interface range fa0/4-5
- switchport mode access
- switchport access vlan 10
+Router> enable
+Router# configure terminal
+Router(config)# interface GigabitEthernet0/0
+Router(config-if)# no shutdown
 
-interface range fa0/1-2
- switchport mode access
- switchport access vlan 20
+! Sub-interface mapping for VLAN 10
+Router(config)# interface GigabitEthernet0/0.10
+Router(config-subif)# encapsulation dot1Q 10
+Router(config-subif)# ip address 192.168.100.1 255.255.255.0
 
-interface range fa0/6-7
- switchport mode access
- switchport access vlan 199
-```
+! Sub-interface mapping for VLAN 20
+Router(config)# interface GigabitEthernet0/0.20
+Router(config-subif)# encapsulation dot1Q 20
+Router(config-subif)# ip address 192.168.150.1 255.255.255.0
 
-### Trunk Port
+! Sub-interface mapping for Native VLAN 199
+Router(config)# interface GigabitEthernet0/0.30
+Router(config-subif)# encapsulation dot1Q 199 native
+Router(config-subif)# ip address 192.168.200.1 255.255.255.0
+Router(config-subif)# end
+Router# write
 
-```ios
-interface fa0/3
- switchport mode trunk
- switchport trunk native vlan 199
-```
-
----
-
-# 🛠️ Router Configuration
-
-Enable the physical interface.
-
-```ios
-interface GigabitEthernet0/0
- no shutdown
-```
-
-### VLAN 10
-
-```ios
-interface GigabitEthernet0/0.10
- encapsulation dot1Q 10
- ip address 192.168.100.1 255.255.255.0
-```
-
-### VLAN 20
-
-```ios
-interface GigabitEthernet0/0.20
- encapsulation dot1Q 20
- ip address 192.168.150.1 255.255.255.0
-```
-
-### Native VLAN
-
-```ios
-interface GigabitEthernet0/0.30
- encapsulation dot1Q 199 native
- ip address 192.168.200.1 255.255.255.0
 ```
 
 ---
 
-# 🔄 Traffic Flow Analysis
-
-When **PC2 (VLAN 10)** sends traffic to **PC0 (VLAN 20)**:
-
-1. PC2 determines that the destination belongs to another subnet.
-2. PC2 forwards the packet to its Default Gateway.
-3. The switch tags the frame with **802.1Q VLAN 10**.
-4. The router receives the tagged frame on G0/0.
-5. Sub-interface G0/0.10 processes the packet.
-6. The router routes the packet to sub-interface G0/0.20.
-7. The frame is re-tagged as VLAN 20.
-8. The switch removes the tag before delivering the frame to PC0.
-
----
-
-# 🔍 Verification
-
-### Switch
-
-```text
-show vlan brief
-show interfaces trunk
-```
-
-### Router
-
-```text
-show ip interface brief
-show ip route
-show running-config
-```
-
----
-
-# 🧪 Connectivity Test
-
-```bash
-ping 192.168.150.10
-```
-
-Expected Result:
-
-* The first ping may timeout because of ARP.
-* All subsequent replies should succeed.
-
----
-
-# 📊 Screenshots
-
-Include screenshots showing:
-
-* Network Topology
-* show vlan brief
-* show interfaces trunk
-* show ip route
-* Successful Ping
-* Packet Tracer Simulation Mode
-
----
-
-# 🚀 Key Takeaways
-
-* One physical router interface supports multiple VLANs.
-* IEEE 802.1Q provides VLAN tagging.
-* Native VLAN traffic is transmitted untagged.
-* Router sub-interfaces enable Layer 3 routing between VLANs.
-* ROAS is significantly more scalable than Traditional Inter-VLAN Routing.
-
----
 ## 🏷️ Understanding Tagged vs. Untagged Traffic in this Lab
 
-To fully grasp how Inter-VLAN routing operates in this topology, we must differentiate between how Access ports and Trunk ports handle Ethernet frames:
+To accurately demonstrate frame processing behavior on Cisco hardware, we must audit how the platform encapsulates data across access and trunk links based on our port matrices:
 
-### 1. Untagged Frames (Access Ports & End Devices)
-* **What it means:** Standard end devices (like PC0, PC2, PC4) have no concept of VLANs. They send and receive standard, **Untagged** Ethernet frames.
-* **In this Lab:** * When **PC2** sends data, it leaves the PC interface as *Untagged*. 
-  * **Switch0** receives it on `Fa0/4` (Access VLAN 10), and internally understands that this frame belongs to the Sales department. 
-  * Before delivering data to any target PC on an access port, the switch strips away any internal tracking, ensuring the final PC receives a clean, *Untagged* frame.
+### 1. Untagged Data Frames (VLAN 10 & VLAN 20 Access Links)
 
-### 2. Tagged Frames (Trunk Port `Fa0/3`)
-* **What it means:** To multiplex multiple networks over the single physical link between **Switch0** and **Router0**, frames must be "labeled" so the receiving device knows which VLAN they belong to. This is called **802.1Q Tagging**.
-* **In this Lab:**
-  * When the switch forwards PC2's frame up to the router via the Trunk port `Fa0/3`, it injects a **4-byte 802.1Q Tag** containing **VLAN ID: 10** into the Ethernet header.
-  * **Router0** receives this **Tagged Frame** on its physical interface, reads the tag, and steers it directly to the virtual sub-interface `Gig0/0.10`.
+* End devices (like PC2/PC3 in Sales, and PC0/PC1 in HR) do not natively process Layer 2 802.1Q tags. They emit clean, standard **Untagged Ethernet Frames**.
+* When **PC2** transmits a payload, it exits its network card untagged. **Switch0** intercepts it on ingress interface **`Fa0/4`**. Because this port is restricted to Access VLAN 10, the switch internally processes it as Sales data. Before forwarding this traffic up to the router, the switch must insert a 4-byte 802.1Q Tag containing the tag header ID 10 so Router0 can read it.
 
-### 3. The Native VLAN Exception (VLAN 199)
-* **The Rule:** The Native VLAN is the *only* VLAN on a trunk link that sends and expects traffic **Untagged**.
-* **In this Lab:** * **PC4** and **PC5** are administrative devices assigned to **VLAN 199**.
-  * When their traffic travels across the trunk line `Fa0/3` toward the router, **Switch0 does NOT add an 802.1Q tag** because it matches the configured Native VLAN.
-  * **Router0** receives this *Untagged* frame on its physical port, recognizes it as Native traffic, and processes it through sub-interface `Gig0/0.30` (configured with `encapsulation dot1Q 199 native`).
+### 2. The Native VLAN Paradigm Exception (PC4 & PC5 on Ports `Fa0/6-7`)
 
-# ⚠️ Design Considerations
-
-Although Router-on-a-Stick greatly reduces hardware requirements, all VLAN traffic traverses a single trunk link. As network traffic grows, this trunk can become a bottleneck. Modern enterprise networks often replace ROAS with Layer 3 switches that perform Inter-VLAN Routing directly in hardware.
+* **Core Rule:** The Native VLAN is the single broadcast domain on an 802.1Q trunk port that transmits and expects data **without an explicit 802.1Q tag header (Untagged)** across the physical wire.
+* In our deployment, **PC4** and **PC5** are administrative hosts attached to access ports **`Fa0/6`** and **`Fa0/7`**, explicitly mapped to **VLAN 199 (Native)**.
+* When **PC4** transmits an ICMP echo request, it enters Switch0 untagged. When Switch0 forwards this payload across the uplink trunk link `Fa0/3` toward the router, **it skips adding an 802.1Q tag header**. This happens because the frame's internal VLAN ID (199) matches the designated `switchport trunk native vlan 199` statement.
+* **Router0** receives this raw, untagged packet directly onto physical port `Gig0/0`. Because it has an explicit `encapsulation dot1Q 199 native` statement bound to sub-interface `Gig0/0.30`, it parses the untagged frame natively into that sub-interface context without looking for an explicit tag field.
 
 ---
 
-# 📂 Repository Structure
+## 🔄 Traffic Flow Analysis (Data Path Engineering)
+
+When PC2 (VLAN 10) initiates an ICMP ping message destined for PC0 (VLAN 20):
+
+1. **PC2** calculates that the target IP resides on a foreign subnet and encapsulates the packet using the MAC address of its Default Gateway.
+2. **Switch0** receives the raw frame on access interface `Fa0/4` and applies an internal **802.1Q Tag (VLAN ID: 10)**.
+3. The switch drops the tagged frame down trunk link `Fa0/3` directly to **Router0**.
+4. The router strips the L2 header on physical port `G0/0`, redirects it to logical sub-interface `G0/0.10`, reads the L3 destination address (`192.168.150.10`), and performs a route table lookup.
+5. Finding a directly connected match via sub-interface `G0/0.20`, the router encapsulates the packet into a brand new Layer 2 frame, tags it explicitly as **VLAN 20**, and passes it right back down the same wire.
+6. The switch picks up the frame on trunk port `Fa0/3`, notices the VLAN 20 tag, strips the tag entirely, and transfers a clean untagged frame to **PC0** over access link `Fa0/1`.
+
+---
+
+## 🔍 Verification & Connectivity Matrices
+
+Verification was completed using Cisco IOS validation suites and ICMP routines.
+
+### 📊 Practical Evidence
+
+#### 🟢 Verification Command Checks
+
+Executing `show vlan brief` on the switch confirms accurate data-plane allocation:
+
+
+Executing `show ip route` on the router displays active connected routing protocols across subnets:
+
+
+#### 🟢 Successful Inter-VLAN Ping Tests
+
+Initial packet drops represent standard ARP discovery routines, immediately followed by **100% data transmission (0% loss)**:
+
+```text
+C:\>ping 192.168.150.10
+Pinging 192.168.150.10 with 32 bytes of data:
+
+Reply from 192.168.150.10: bytes=32 time<1ms TTL=127
+Reply from 192.168.150.10: bytes=32 time<1ms TTL=127
+Reply from 192.168.150.10: bytes=32 time<1ms TTL=127
+Reply from 192.168.150.10: bytes=32 time<1ms TTL=127
+
+Ping statistics for 192.168.150.10:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)
+
+```
+
+---
+
+## ⚠️ Design Considerations & Key Takeaways
+
+While Router-on-a-Stick minimizes upfront infrastructural hardware costs, it channels all Inter-VLAN workloads through a single shared physical bottleneck link. As a business grows, this link can face heavy traffic congestion. Modern enterprise networks typically handle high-volume inter-departmental traffic directly inside core hardware fabrics using Layer 3 Multilayer Switches.
+
+---
+
+## 📂 Repository Structure
 
 ```text
 Router-on-a-Stick-Inter-VLAN-Routing/
@@ -239,12 +202,11 @@ Router-on-a-Stick-Inter-VLAN-Routing/
     ├── show-ip-route.png
     ├── ping-success.png
     └── simulation-mode.png
+
 ```
 
 ---
 
-# 👩‍💻 About This Project
+## 👩‍💻 About This Project
 
-This project was developed as part of my CCNA learning journey and technical portfolio.
-
-It demonstrates practical experience with IEEE 802.1Q trunking, Router-on-a-Stick (ROAS), Native VLAN configuration, router sub-interfaces, and Inter-VLAN Routing while reinforcing the networking concepts required for enterprise network design.
+This project was engineered during my **CCNA** certification studies to master Layer 2 broadcast containment parameters, dot1q trunk multiplexing syntax, and Layer 3 sub-interface virtual routing boundaries.
