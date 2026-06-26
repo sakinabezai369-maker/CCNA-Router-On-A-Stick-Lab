@@ -32,7 +32,7 @@ Instead of requiring one physical router interface per VLAN, ROAS uses a **singl
 
 ## 🌐 Network Topology
 
-![Network Topology](topology)
+![Network Topology](topology.PNG)
 
 ---
 
